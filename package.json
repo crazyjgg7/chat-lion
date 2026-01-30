@@ -9,12 +9,11 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "A desktop lion assistant",
   "dependencies": {
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.23",
     "clsx": "^2.1.1",
-    "electron": "^40.1.0",
     "electron-store": "^11.0.2",
     "framer-motion": "^12.29.2",
     "postcss": "^8.5.6",
@@ -25,6 +24,7 @@
     "vite": "^6.4.1"
   },
   "devDependencies": {
+    "electron": "^40.1.0",
     "@tailwindcss/postcss": "^4.1.18",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
@@ -32,5 +32,19 @@
     "electron-rebuild": "^3.2.9",
     "tailwindcss": "^4.1.18",
     "wait-on": "^9.0.3"
+  },
+  "build": {
+    "appId": "com.chatlion.app",
+    "productName": "chat-lion",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg"
+      ],
+      "icon": "build/icon.png"
+    }
   }
 }
