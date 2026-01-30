@@ -35,7 +35,11 @@ export default function QuickPhrases() {
     };
 
     return (
-        <div className="absolute inset-0 flex flex-col w-full h-full font-sans bg-transparent">
+        <div className="absolute inset-0 flex flex-col w-full h-full font-sans bg-transparent"
+            style={{
+                color: '#FFFFFF',
+                textShadow: '0 1px 2px rgba(0,0,0,0.9)'
+            }}>
             {/* Header */}
             <div className="h-8 px-4 flex items-center shrink-0">
                 <span className="text-[10px] font-bold text-white tracking-widest uppercase opacity-80" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>

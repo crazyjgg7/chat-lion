@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import Pet from './components/Pet';
 import Sidebar from './components/Sidebar';
+import Pet from './components/Pet';
+import PromptManager from './components/PromptManager';
 
 function App() {
-    const [windowType, setWindowType] = useState(null);
+    const [windowType, setWindowType] = useState('pet'); // pet, sidebar, prompt-manager
 
     useEffect(() => {
         console.log("App: Component Mounted");
@@ -28,6 +29,10 @@ function App() {
 
     if (windowType === 'pet') {
         return <Pet />;
+    }
+
+    if (windowType === 'prompt-manager') {
+        return <PromptManager />;
     }
 
     return null;

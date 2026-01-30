@@ -4,14 +4,33 @@ const fs = require('fs');
 
 let petWindow;
 let sidebarWindow;
+let promptManagerWindow;
 let clipboardHistory = [];
 let lastClipboardText = '';
 
 // Data Persistence
 const userDataPath = app.getPath('userData');
-const phrasesPath = path.join(userDataPath, 'phrases.json');
+const customPhrasesPath = path.join(app.getPath('userData'), 'customPhrases.json');
+const promptsPath = path.join(app.getPath('userData'), 'prompts.json');
 
-// Default Phrases
+// Default Prompts (Seed)
+const DEFAULT_PROMPTS = [
+    { id: 'translate', type: 'TEXT', label: '🔤 地道翻译', content: "请将以下内容翻译成地道、自然的英文（口语化风格）：\n\n" },
+    { id: 'translate_cn', type: 'TEXT', label: '🀄️ 翻译成中文', content: "请将以下内容翻译成流畅、准确的中文：\n\n" },
+    { id: 'summarize', type: 'TEXT', label: '📝 总结内容', content: "请简要总结以下文本的主要内容，列出核心要点：\n\n" },
+    { id: 'todo', type: 'TEXT', label: '✅ 待办提取', content: "请阅读以下内容，并整理出一个清晰的待办事项清单 (To-Do List)：\n\n" },
+    { id: 'sum_page', type: 'LINK', label: '📄 网页总结', content: "请访问这个链接，并总结其核心内容和关键结论：\n\n" },
+    { id: 'deploy', type: 'LINK', label: '🚀 部署帮助', content: "请详细阅读这个 GitHub 仓库的文档，并一步步教我如何部署它：\n\n", condition: 'github.com' },
+    { id: 'analyze_repo', type: 'LINK', label: '📊 项目分析', content: "请分析这个 GitHub 项目的架构、主要功能和技术栈：\n\n", condition: 'github.com' },
+    { id: 'explain', type: 'CODE', label: '🧐 代码解释', content: "请详细解释这段代码的逻辑和功能，逐行分析：\n\n" },
+    { id: 'refactor', type: 'CODE', label: '⚡️ 优化重构', content: "请作为资深工程师，优化这段代码的性能和可读性，并给出修改后的代码：\n\n" },
+    { id: 'find_bugs', type: 'CODE', label: '🐛 查找 Bug', content: "请帮我找出这段代码中潜在的 Bug 或安全隐患，并提供修复建议：\n\n" },
+    { id: 'reply_polite', type: 'EMAIL', label: '✉️ 礼貌回复', content: "请帮我起草一封礼貌、专业的回复邮件，回应以下内容：\n\n" },
+    { id: 'reply_refusal', type: 'EMAIL', label: '😡 委婉拒绝', content: "请帮我写一封语气坚定但得体的拒绝邮件给对方：\n\n" }
+];
+
+let customPhrases = [];
+let customPrompts = [];
 const defaultPhrases = [
     { id: '1', label: '继续', content: '请继续。' },
     { id: '2', label: '同意', content: '我同意这个观点。' },
@@ -21,28 +40,58 @@ const defaultPhrases = [
     { id: '6', label: '解释', content: '请解释这段代码的原理。' },
 ];
 
-let customPhrases = [...defaultPhrases];
+// Load Phrases and Prompts
+function loadData() {
+    try {
+        if (fs.existsSync(customPhrasesPath)) {
+            customPhrases = JSON.parse(fs.readFileSync(customPhrasesPath));
+        } else {
+            customPhrases = [...defaultPhrases];
+            savePhrases();
+        }
 
-// Load Phrases
-try {
-    if (fs.existsSync(phrasesPath)) {
-        const data = fs.readFileSync(phrasesPath, 'utf-8');
-        customPhrases = JSON.parse(data);
+        // Load Prompts
+        if (fs.existsSync(promptsPath)) {
+            customPrompts = JSON.parse(fs.readFileSync(promptsPath));
+        } else {
+            customPrompts = DEFAULT_PROMPTS;
+            savePrompts();
+        }
+    } catch (error) {
+        console.error('Error loading data:', error);
+        customPhrases = [...defaultPhrases];
+        customPrompts = DEFAULT_PROMPTS;
     }
-} catch (e) {
-    console.error('Failed to load phrases:', e);
 }
+
+// Initialize Data
+loadData();
 
 // Save Phrases Helper
 function savePhrases() {
     try {
-        fs.writeFileSync(phrasesPath, JSON.stringify(customPhrases, null, 2));
+        fs.writeFileSync(customPhrasesPath, JSON.stringify(customPhrases, null, 2));
         // Push update to renderer
         if (sidebarWindow && !sidebarWindow.isDestroyed()) {
             sidebarWindow.webContents.send('phrases-update', customPhrases);
         }
     } catch (e) {
         console.error('Failed to save phrases:', e);
+    }
+}
+
+function savePrompts() {
+    try {
+        fs.writeFileSync(promptsPath, JSON.stringify(customPrompts, null, 2));
+        // Push update to renderer
+        if (sidebarWindow && !sidebarWindow.isDestroyed()) {
+            sidebarWindow.webContents.send('prompts-update', customPrompts);
+        }
+        if (promptManagerWindow && !promptManagerWindow.isDestroyed()) {
+            promptManagerWindow.webContents.send('prompts-update', customPrompts);
+        }
+    } catch (e) {
+        console.error('Failed to save prompts:', e);
     }
 }
 
@@ -213,6 +262,32 @@ function createWindows() {
         savePhrases();
     });
 
+    // --- PROMPT MANAGER IPC ---
+    ipcMain.on('get-prompts', (event) => {
+        event.sender.send('prompts-update', customPrompts);
+    });
+
+    ipcMain.on('save-prompt', (event, prompt) => {
+        const index = customPrompts.findIndex(p => p.id === prompt.id);
+        if (index >= 0) {
+            customPrompts[index] = prompt;
+        } else {
+            customPrompts.push(prompt);
+        }
+        savePrompts();
+        // Notify all
+        if (promptManagerWindow) promptManagerWindow.webContents.send('prompts-update', customPrompts);
+        if (sidebarWindow) sidebarWindow.webContents.send('prompts-update', customPrompts);
+    });
+
+    ipcMain.on('delete-prompt', (event, id) => {
+        customPrompts = customPrompts.filter(p => p.id !== id);
+        savePrompts();
+        // Notify all
+        if (promptManagerWindow) promptManagerWindow.webContents.send('prompts-update', customPrompts);
+        if (sidebarWindow) sidebarWindow.webContents.send('prompts-update', customPrompts);
+    });
+
     ipcMain.on('show-context-menu', (event, { type, data }) => {
         const menu = new Menu();
 
@@ -226,6 +301,14 @@ function createWindows() {
                     }
                 }
             }));
+
+            menu.append(new MenuItem({
+                label: '🧠 管理 AI 指令 (Manage Prompts)',
+                click: () => {
+                    createPromptManagerWindow();
+                }
+            }));
+
             menu.append(new MenuItem({ type: 'separator' }));
             menu.append(new MenuItem({ label: '退出 Lion', role: 'quit' }));
         }
@@ -356,6 +439,42 @@ function createWindows() {
         }
     });
 } // End createWindows function
+
+function createPromptManagerWindow() {
+    if (promptManagerWindow && !promptManagerWindow.isDestroyed()) {
+        promptManagerWindow.show();
+        promptManagerWindow.focus();
+        return;
+    }
+
+    promptManagerWindow = new BrowserWindow({
+        width: 900,
+        height: 600,
+        title: '🦁 AI Prompt Manager',
+        frame: false,
+        transparent: true,
+        vibrancy: 'hud', // Dark Glass
+        visualEffectState: 'active',
+        webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            nodeIntegration: false,
+            contextIsolation: true,
+        }
+    });
+
+    const isDev = !app.isPackaged;
+    const devUrl = 'http://localhost:5173';
+
+    const startUrl = isDev
+        ? `${devUrl}?window=prompt-manager`
+        : `file://${path.join(__dirname, '../dist/index.html')}?window=prompt-manager`;
+
+    promptManagerWindow.loadURL(startUrl);
+
+    promptManagerWindow.on('closed', () => {
+        promptManagerWindow = null;
+    });
+}
 
 const gotTheLock = app.requestSingleInstanceLock();
 

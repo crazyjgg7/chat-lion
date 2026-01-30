@@ -18,6 +18,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onPhrasesUpdate: (callback) => ipcRenderer.on('phrases-update', (event, phrases) => callback(phrases)),
     removePhraseListener: () => ipcRenderer.removeAllListeners('phrases-update'),
 
+    // Prompt Management
+    getPrompts: () => ipcRenderer.send('get-prompts'),
+    savePrompt: (prompt) => ipcRenderer.send('save-prompt', prompt),
+    deletePrompt: (id) => ipcRenderer.send('delete-prompt', id),
+    onPromptsUpdate: (callback) => ipcRenderer.on('prompts-update', (event, prompts) => callback(prompts)),
+    removePromptsListener: () => ipcRenderer.removeAllListeners('prompts-update'),
+
     // Context Menu
     showContextMenu: (type, data) => ipcRenderer.send('show-context-menu', { type, data }),
 
